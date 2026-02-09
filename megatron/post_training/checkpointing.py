@@ -14,9 +14,11 @@ from megatron.training import get_args
 from megatron.training.checkpointing import _load_base_checkpoint, load_checkpoint
 from megatron.training.utils import print_rank_0, unwrap_model
 from .utils import print_distributed_quant_summary
+from typing import Optional, Tuple, Union, List, Any
 
 logger = logging.getLogger(__name__)
 
+_EAGLE_MODE_NAMES = {"eagle1", "eagle3", "eagle-mtp", "eagle"}
 NEMO_WEIGHT_DIR_NAMES = {"model_weights": "model.", "weights": "module."}
 
 
@@ -50,6 +52,42 @@ def has_modelopt_state(checkpoint_path: str) -> bool:
     except Exception as e:
         print_rank_0(f"Failed to inspect checkpoint in {checkpoint_path}: {e}")
         return False
+
+def _modelopt_state_has_eagle(modelopt_state: List[Any]) -> bool:
+    """Check if modelopt_state contains EAGLE conversion modes.
+
+    Args:
+        modelopt_state: The modelopt state list from checkpoint.
+
+    Returns:
+        True if any EAGLE-related mode is found.
+    """
+    if not modelopt_state:
+        return False
+    for entry in modelopt_state:
+        if isinstance(entry, (list, tuple)) and len(entry) >= 1:
+            if entry[0].lower() in _EAGLE_MODE_NAMES:
+                return True
+    return False
+
+def attempt_register_mamba_eagle_plugin(modelopt_state: Optional[List[Any]]) -> None:
+    """Register MambaModel with EagleDMRegistry if checkpoint contains EAGLE state.
+
+    This enables lazy registration of the EAGLE plugin only when restoring from
+    an EAGLE-converted checkpoint, rather than at import time.
+
+    Args:
+        modelopt_state: The modelopt state from checkpoint, or None.
+    """
+    if modelopt_state is None or not _modelopt_state_has_eagle(modelopt_state):
+        return
+
+    try:
+        from megatron.core.post_training.modelopt.mamba import register_mamba_eagle_plugin
+        register_mamba_eagle_plugin()
+        print_rank_0("Registered MambaModel EAGLE plugin for checkpoint restoration.")
+    except ImportError as e:
+        print_rank_0(f"Warning: Could not register MambaModel EAGLE plugin: {e}")
 
 
 def get_sharded_load_dir(load_dir: str) -> Tuple[Union[Path, None], str]:
@@ -116,9 +154,11 @@ def load_modelopt_state(model: nn.Module, load_dir: Optional[str] = None) -> Non
             return
         modelopt_state = state_dict.get("modelopt_state", None)
         if modelopt_state is not None:
+            attempt_register_mamba_eagle_plugin(modelopt_state)
             mto.restore_from_modelopt_state(model, modelopt_state)
     else:
         # Sharded
+        #TODO: Figure out how to reigster for sharded dictionaries LOL
         sharded_load_dir, _ = get_sharded_load_dir(load_dir)
         if sharded_load_dir is None:
             print_rank_0("No sharded checkpoint found. Skipping loading modelopt_state.")

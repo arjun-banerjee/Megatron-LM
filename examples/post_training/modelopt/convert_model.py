@@ -14,6 +14,7 @@ import torch
 from modelopt.torch.export import import_mcore_gpt_from_hf
 
 from megatron.core import mpu
+from megatron.core.post_training.modelopt.mamba import register_mamba_eagle_plugin
 from megatron.core.enums import ModelType
 from megatron.core.parallel_state import destroy_model_parallel
 from megatron.post_training.arguments import add_modelopt_args
@@ -149,6 +150,9 @@ if __name__ == "__main__":
         _ = load_modelopt_checkpoint(model)
 
     if args.algorithm in ("eagle1", "eagle3"):
+        #Register MambaModel with EagleDMRegistry for hybrid Mamba model support
+        register_mamba_eagle_plugin()
+        
         mtsp_config = ALGO_TO_CONFIG[args.algorithm]
         if args.eagle_config:
             with open(args.eagle_config) as f:
