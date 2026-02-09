@@ -645,6 +645,8 @@ def validate_args(args, defaults={}):
                 if args.account_for_loss_in_pipeline_split:
                     num_layers += 1
 
+                print("num_layers:", num_layers)
+                print("pipeline_model_parallel_size:", args.transformer_pipeline_model_parallel_size)
                 assert num_layers % args.transformer_pipeline_model_parallel_size == 0, \
                     'Number of layers should be divisible by the pipeline-model-parallel size'
 

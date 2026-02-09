@@ -80,6 +80,7 @@ fi
 if [ -z ${LAUNCH_SCRIPT} ]; then
     LAUNCH_SCRIPT="torchrun --nproc_per_node=$((ETP * EP * PP * CP * DP))"
 fi
+printf "Resolved LAUNCH_SCRIPT: ${LAUNCH_SCRIPT}\n"
 
 # Install Model Optimizer if haven't.
 if [ -z ${MLM_SKIP_INSTALL} ]; then
