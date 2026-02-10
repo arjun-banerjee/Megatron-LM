@@ -36,19 +36,19 @@ if [ -z ${MLM_DATA_ARGS} ]; then
     "
 fi
 
-if [ -z ${MLM_TRAIN_ARGS} ]; then
-    MLM_TRAIN_ARGS=" \
-        --no-gradient-accumulation-fusion \
-        --reset-position-ids \
-        --reset-attention-mask \
-        --eod-mask-loss \
-        --micro-batch-size 1 \
-        --attention-dropout 0.0 \
-        --hidden-dropout 0.0 \
-        --no-check-for-nan-in-loss-and-grad \
-    "
-fi
-
+    if [ -z ${MLM_TRAIN_ARGS} ]; then
+        MLM_TRAIN_ARGS=" \
+            --no-gradient-accumulation-fusion \
+            --reset-position-ids \
+            --reset-attention-mask \
+            --eod-mask-loss \
+            --micro-batch-size 1 \
+            --attention-dropout 0.0 \
+            --hidden-dropout 0.0 \
+            --no-check-for-nan-in-loss-and-grad \
+            --sequence-parallel \
+        "
+    fi
 if [ -z ${MLM_OPTIM_ARGS} ]; then
     MLM_OPTIM_ARGS=" \
         --lr 5.0e-5 \
